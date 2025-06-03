@@ -1,139 +1,162 @@
-from flask import Flask, url_for, redirect, render_template, request
+from flask import Flask, url_for, redirect, render_template, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
-
-# env variables !
 from dotenv import load_dotenv
-load_dotenv()
 import os
 
-################################################################################
-## sensitive data ###
-#####################
-# In order to generate the csrf token, you must have a secret key, this is 
-# usually the same as your Flask app secret key. If you want to use another 
-# secret key, config it.
-# env variables ! - dont change here !
-FLASK_SECRET_KEY = os.environ.get('FLASK_SECRET_KEY')
-################################################################################
+# Load environment variables from .env
+load_dotenv()
 
-
-# creating flask object and its variables
+# Flask app setup
 app = Flask(__name__)
-app.config['SECRET_KEY'] = FLASK_SECRET_KEY
-# database uri
+app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///books-collection.db'
-#Optional: But it will silence the deprecation warning in the console.
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
-# creating the book model for database
+# Book model definition
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(250), unique=True, nullable=False)
     author = db.Column(db.String(250), nullable=False)
     rating = db.Column(db.Float, nullable=False)
 
-    #Optional: this will allow each book object to be identified by its title when printed.
     def __repr__(self):
-        return f'<User {self.title}>'
+        return f'<Book {self.title}>'
 
-# create the initial database
-# should only run once to create your database
+# Create the database (run only once)
 db.create_all()
 
+# ------------------ HTML ROUTES ------------------ #
 
-
-# all Flask routes below
-# main route - home - /
 @app.route('/')
 def home():
-    # gettin all the books from the data base
-    all_books = db.session.query(Book).all()
-    return render_template("index.html", books = all_books)
+    books = db.session.query(Book).all()
+    return render_template("index.html", books=books)
 
-
-
-# /add route
-@app.route("/add", methods = ["GET", "POST"])
+@app.route("/add", methods=["GET", "POST"])
 def add():
     if request.method == "POST":
-        try: 
-            data = request.form
-            book_name = data['book-name']
-            book_author = data['book-author']
-            book_rating = data['book-rating']
+        try:
+            book_name = request.form['book-name']
+            book_author = request.form['book-author']
+            book_rating = request.form['book-rating']
         except KeyError:
-            # handle the exception of not existing key element in the form
-            print("Key error in books form")
-        else:
+            return "Missing form data", 400
 
-            # CREATE new entry in the database
-            new_book = Book(title=book_name, author=book_author, rating=book_rating)
-            db.session.add(new_book)
-            db.session.commit()
+        new_book = Book(title=book_name, author=book_author, rating=book_rating)
+        db.session.add(new_book)
+        db.session.commit()
+        return redirect(url_for("home"))
 
-            # redirect after submiting data
-            return redirect(url_for("home"))
-        
     return render_template("add.html")
 
-
-# /edit_book/1 route
-@app.route("/edit_book/<int:id>", methods = ["GET", "POST"])
+@app.route("/edit_book/<int:id>", methods=["GET", "POST"])
 def edit_book(id):
     book = Book.query.get(id)
+    if not book:
+        return "Book not found", 404
 
     if request.method == "POST":
-        try: 
-            data = request.form
-            new_book_rating = data['new-book-rating']
+        try:
+            new_rating = request.form['new-book-rating']
         except KeyError:
-            # handle the exception of not existing key element in the form
-            print("Key error in books form")
-        else:
-            # updating the new value in the database
-            book.rating = new_book_rating
-            db.session.commit()
+            return "Missing form data", 400
 
-            # redirect after submiting data
-            return redirect(url_for("home"))
-        
-    return render_template("edit_book.html",book=book)
+        book.rating = new_rating
+        db.session.commit()
+        return redirect(url_for("home"))
 
+    return render_template("edit_book.html", book=book)
 
-# /delete route
-# http://127.0.0.1:5000/delete?id=1
 @app.route("/delete")
 def delete_book():
-
-    # getting the id
     book_id = request.args.get('id')
-    # getting the book
     book = Book.query.get(book_id)
-    # deleting the book
+    if not book:
+        return "Book not found", 404
+
     db.session.delete(book)
     db.session.commit()
-
-       
-    # redirect to home
     return redirect(url_for("home"))
 
+# ------------------ REST API ROUTES ------------------ #
 
-#### running the website ####
+@app.route("/api/books", methods=["GET"])
+def get_all_books():
+    books = Book.query.all()
+    return jsonify(books=[{
+        "id": book.id,
+        "title": book.title,
+        "author": book.author,
+        "rating": book.rating
+    } for book in books]), 200
 
-# running the app and setting the required env variable
+@app.route("/api/books/<int:book_id>", methods=["GET"])
+def get_book(book_id):
+    book = Book.query.get(book_id)
+    if book:
+        return jsonify({
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "rating": book.rating
+        }), 200
+    return jsonify(error="Book not found"), 404
+
+@app.route("/api/books", methods=["POST"])
+def add_book_api():
+    title = request.args.get("title")
+    author = request.args.get("author")
+    rating = request.args.get("rating")
+
+    if not title or not author or not rating:
+        return jsonify(error="Missing data"), 400
+
+    try:
+        rating = float(rating)
+    except ValueError:
+        return jsonify(error="Invalid rating value"), 400
+
+    new_book = Book(title=title, author=author, rating=rating)
+    db.session.add(new_book)
+    db.session.commit()
+    return jsonify(message="Book added successfully"), 201
+
+@app.route("/api/books/<int:book_id>", methods=["PUT"])
+def update_book(book_id):
+    book = Book.query.get(book_id)
+    if not book:
+        return jsonify(error="Book not found"), 404
+
+    title = request.args.get("title")
+    author = request.args.get("author")
+    rating = request.args.get("rating")
+
+    if title:
+        book.title = title
+    if author:
+        book.author = author
+    if rating:
+        try:
+            book.rating = float(rating)
+        except ValueError:
+            return jsonify(error="Invalid rating value"), 400
+
+    db.session.commit()
+    return jsonify(message="Book updated successfully"), 200
+
+@app.route("/api/books/<int:book_id>", methods=["DELETE"])
+def delete_book_api(book_id):
+    book = Book.query.get(book_id)
+    if not book:
+        return jsonify(error="Book not found"), 404
+
+    db.session.delete(book)
+    db.session.commit()
+    return jsonify(message="Book deleted successfully"), 200
+
+# ------------------ MAIN ------------------ #
+
 if __name__ == "__main__":
-    # only run if it's not imported
-    # so only if the file main.py is run directly and not imported
-    # by another file
-
-    # adding the env variable for Flask to work
-    # > $env:FLASK_APP = "main"
-    import os
-    # print(os.environ.get("FLASK_APP"))
-    os.environ["FLASK_APP"] = "main"
-
-    # > flask run
-    # start server
-    # in a debug mode not suitable for production !!
     app.run(debug=True)

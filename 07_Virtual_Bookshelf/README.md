@@ -1,63 +1,100 @@
-# 07_Virtual_Bookshelf
+# Virtual Bookshelf – REST API Project
 
-This is a website that keeps track of the books we have read and was created using the Python framework Flask.
-The data is stored in a database and managed by using SQLAlchemy from Flask to serve it whenever it is needed.
-The main page will display a list of all the books in the database, and the user will have the option of:</br>
-- adding a new book to the database (title, author, rating), </br>
-- updating the rating of an existing book,</br>
-- deleting an existing book.</br> 
-
-This is a project to get more familiar with the CRUD operations with Flask SQLAlchemy.
-Jinja2, Jinja2-Templates, Flask-SQLAlchemy, and Forms are some of the main features.
+This is a Flask-based web app and REST API for managing a personal virtual bookshelf. It allows users to add, view, edit, and delete book entries through both HTML forms and a RESTful API.
 
 ---
 
-Flask</br>
-https://flask.palletsprojects.com/en/2.1.x/</br>
+## Features
 
-Flask-SQLAlchemy</br>
-https://flask-sqlalchemy.palletsprojects.com/en/2.x/</br>
-
-Jinja templates</br>
-https://jinja.palletsprojects.com/en/3.1.x/</br>
-
----
-
-The necessary steps to make the program work:</br>
-1. Install the required libraries from the requirements.txt using the following command: </br>
-*pip install -r requirements.txt*</br>
-2. Change the name of .env.example to .env and define the environmental variable (https://flask.palletsprojects.com/en/2.2.x/config/#SECRET_KEY):</br>
-FLASK_SECRET_KEY = "your_secret_key_keep_it_secret"</br>
-
+- Add, edit, delete books via web interface
+- Full REST API (GET, POST, PUT, DELETE)
+- Status code handling (`200`, `201`, `400`, `404`)
+- SQLite database using SQLAlchemy
+- Environment variables with `python-dotenv`
+- Clean, modular Flask application
 
 ---
 
-**Example views from the website:**</br>
+## REST API Endpoints
 
-
-***The home page - book list.***</br>
-![Screenshot](docs/img/01_home.png)</br>
-
----
-
-***Adding a new book view.***</br>
-![Screenshot](docs/img/02_adding_new_book.png)</br>
-
----
-
-***Editing an existing book rating view.***</br>
-![Screenshot](docs/img/03_edit_rating.png)</br>
+| Method   | Endpoint              | Description         |
+|----------|-----------------------|---------------------|
+| `GET`    | `/api/books`          | Get all books       |
+| `GET`    | `/api/books/<id>`     | Get a specific book |
+| `POST`   | `/api/books`          | Add a new book      |
+| `PUT`    | `/api/books/<id>`     | Update book data    |
+| `DELETE` | `/api/books/<id>`     | Delete a book       |
 
 ---
 
-***Home page after deleting the first book - user gets redirected.***</br>
-![Screenshot](docs/img/04_after_deleting_first_book.png)</br>
+##  How to Test the API
 
+###  Example: Add a New Book (POST)
+
+```bash
+POST /api/books?title=Test+Book&author=Jane+Doe&rating=4.5
+```
+
+### Example: Update a Book (PUT)
+
+```bash
+PUT /api/books/2?rating=9.9
+```
+
+### Example: Delete a Book (DELETE)
+
+```bash
+DELETE /api/books/2
+```
+
+ Use tools like **Postman** or `curl` to send requests.
 
 ---
 
-**The program was developed using python 3.10.6, Flask 2.2, Flask-SQLAlchemy, Jinja2**
+## How to Run the Project
 
+### Requirements
 
-In order to run the program, you have to execute main.py.
-And your website will be accessible under localhost:5000 (http://127:0:0:1:5000).
+- Python 3.11
+- Flask
+- Flask-SQLAlchemy
+- python-dotenv
+
+### Setup Instructions
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/Virtual_Bookshelf_API.git
+cd Virtual_Bookshelf_API
+
+# 2. Create virtual environment
+python -m venv venv
+venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run the app
+python main.py
+```
+
+Open your browser and go to:  
+[http://127.0.0.1:5000/](http://127.0.0.1:5000/)
+
+---
+
+## 🗂 Project Structure
+
+```
+ 07_Virtual_Bookshelf/
+├── main.py                # Main Flask app
+├── templates/             # HTML templates
+├── books-collection.db    # SQLite database
+├── .env                   # (optional) Environment variables
+├── requirements.txt       # List of packages
+└── README.md              # Project documentation
+```
+
+---
+
+That’s it! This project was built using Flask and includes a fully functional REST API.
